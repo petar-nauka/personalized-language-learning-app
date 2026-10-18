@@ -10,6 +10,8 @@ Every card takes **8–15 seconds** and combines **real, properly licensed photo
 
 ---
 
+![learning words](hotel-is.png)
+
 ## ✨ Key features
 
 - **Vertical Reels feed (`/`):** full-screen interactive cards in 10 teaching formats:
