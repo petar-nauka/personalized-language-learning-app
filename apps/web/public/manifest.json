@@ -1,0 +1,18 @@
+{
+  "name": "Като местен — Spanish Reels Feed",
+  "short_name": "Език",
+  "description": "Learn Spanish from zero through an interactive Reels-style visual feed with FSRS memory.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+services:
+  ezik-web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    container_name: ezik-web
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - "3006:3000"
