@@ -221,7 +221,7 @@ export function FeedCardRenderer({
                   </div>
                   {bgHelperLevel > 0 && c.phonetic_bg && (
                     <div style={{ fontSize: "0.85rem", color: "var(--accent)" }}>
-                      🇧🇬 Като българско: „{c.phonetic_bg}“
+                      🇧🇬 Bulgarian-style: „{c.phonetic_bg}“
                     </div>
                   )}
                 </div>

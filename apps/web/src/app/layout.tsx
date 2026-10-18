@@ -15,7 +15,7 @@ const literata = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "Ezik — Испански от нулата",
+  title: "Ezik — Spanish from Zero",
   description:
     "Reels-style Spanish learning from absolute zero (A0 → A1 → A2) with visual photos, neural audio, and FSRS spaced repetition.",
   manifest: "/manifest.json",

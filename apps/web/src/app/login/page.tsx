@@ -40,7 +40,7 @@ export default function LoginPage() {
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: "2.4rem" }}>🇪🇸</div>
           <h1 className="es-title" style={{ marginTop: 6 }}>
-            Ezik — Испански от нулата
+            Ezik — Spanish from Zero
           </h1>
           <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: 4 }}>
             Visual Reels feed • Neural Spanish audio • FSRS v5 memory
