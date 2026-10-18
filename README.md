@@ -1,4 +1,4 @@
-# Personalized Language Learning App (Reels-Style PWA)
+# Ezik - Personalized Language Learning App (Reels-Style PWA)
 
 🇬🇧 English · 🇧🇬 [Български](README.bg.md)
 
