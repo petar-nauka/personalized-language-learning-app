@@ -1,4 +1,4 @@
-# Ezik — Personalized Language Learning App (Reels-Style PWA)
+# Ezik - Personalized Language Learning App (Reels-Style PWA)
 
 🇬🇧 English · 🇧🇬 [Български](README.bg.md)
 
@@ -9,6 +9,8 @@ The first course is **Spanish**, built for Bulgarian and English speakers — bu
 Every card takes **8–15 seconds** and combines **real, properly licensed photos**, **neural audio** at normal (`1.0x`) and slow (`0.75x` 🐢) speed, an **X-ray dictionary on every word you tap** (`XRaySheet`), and the research-backed long-term memory algorithm **FSRS v5 (`ts-fsrs`)**.
 
 ---
+
+![learning words](hotel-is.png)
 
 ## ✨ Key features
 
