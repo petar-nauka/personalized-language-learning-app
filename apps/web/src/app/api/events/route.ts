@@ -18,7 +18,15 @@ export async function POST(request: Request) {
     const body = await request.json();
     const cardId: string | null = body.cardId || null;
     const itemId: string | null = body.itemId || null;
-    const eventType: string | null = body.eventType || null;
+    const rawEventType: string | null = body.eventType || null;
+    const eventType: string | null =
+      rawEventType === "mark_known"
+        ? "know"
+        : rawEventType === "impression"
+          ? cardId
+            ? "view"
+            : null
+          : rawEventType;
     const explicitRating: number | null = body.rating ?? null;
     const responseMs: number | null = body.responseMs ?? null;
     const dwellMs: number | null = body.dwellMs ?? null;

@@ -65,6 +65,7 @@ export function mapEventToGrade(
     case "speak_ok":
       return Rating.Good;
     case "know":
+    case "mark_known":
       return Rating.Easy;
     default:
       return null;

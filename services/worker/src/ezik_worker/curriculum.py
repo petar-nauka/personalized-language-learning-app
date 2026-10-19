@@ -5,9 +5,15 @@ import re
 from typing import Any
 from ezik_worker.claude_client import ClaudeClient
 from ezik_worker.config import HAIKU_MODEL, SONNET_MODEL
+from ezik_worker.curriculum_a1_b2 import (
+    EXTRA_STORIES,
+    EXTRA_TRAPS,
+    ITEMS_A1_TO_B2,
+    PACKS_B1_B2,
+)
 from ezik_worker.validators import validate_and_normalize_card
 
-# 1. All 20 structured packs (A0 -> A2)
+# 1. All 40 structured packs (A0 -> A1 -> A2 -> B1 -> B2)
 SPANISH_PACKS: list[dict[str, Any]] = [
     {
         "code": "es_01",
@@ -18,218 +24,221 @@ SPANISH_PACKS: list[dict[str, Any]] = [
         "title_en": "Read & Speak Spanish in 10 Minutes",
         "title_bg": "Прочети и проговори испански за 10 минути",
         "description_en": "10 secret sound rules (h, ñ, ll, j, qu, c/z) + 25 instant international words you already know.",
-        "icon": "sparkles",
+        "icon": "✨",
     },
     {
         "code": "es_02",
         "target_lang": "es",
         "seq_order": 2,
-        "stage": 1,
+        "stage": 0,
         "cefr": "A0",
         "title_en": "Greetings, Courtesy & Survival Basics",
         "title_bg": "Поздрави, учтивост и оцеляване",
         "description_en": "Say hello, thank you, excuse me, and handle any first conversation politely.",
-        "icon": "hand",
+        "icon": "👋",
     },
     {
         "code": "es_03",
         "target_lang": "es",
         "seq_order": 3,
-        "stage": 1,
+        "stage": 0,
         "cefr": "A0",
         "title_en": "Who I Am (Origin, Name & Languages)",
         "title_bg": "Кой съм аз (име, произход, езици)",
         "description_en": "Introduce yourself, say where you are from and where you live using ser, llamarse, and vivir.",
-        "icon": "user",
+        "icon": "🪪",
     },
     {
         "code": "es_04",
         "target_lang": "es",
         "seq_order": 4,
-        "stage": 2,
+        "stage": 0,
         "cefr": "A0",
         "title_en": "At the Café & Restaurant",
         "title_bg": "В кафенето и ресторанта",
         "description_en": "Order coffee, water, tapas, and ask for the bill like a local in Madrid.",
-        "icon": "coffee",
+        "icon": "☕",
     },
     {
         "code": "es_05",
         "target_lang": "es",
         "seq_order": 5,
-        "stage": 1,
+        "stage": 0,
         "cefr": "A0",
         "title_en": "Everyday Objects, Places & Visual Gender (el / la)",
         "title_bg": "Ежедневни предмети, места и род (el / la)",
-        "description_en": "Build direct mental images for the 40 most common nouns around the house and city.",
-        "icon": "home",
+        "description_en": "Build direct mental images for the most common nouns around the house and city.",
+        "icon": "🏠",
     },
     {
         "code": "es_06",
         "target_lang": "es",
         "seq_order": 6,
-        "stage": 2,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Numbers, Prices, Time & Days",
         "title_bg": "Числа, цени, час и дни",
         "description_en": "Ask how much things cost, pay by card or cash, and tell the time.",
-        "icon": "clock",
+        "icon": "🕒",
     },
     {
         "code": "es_07",
         "target_lang": "es",
         "seq_order": 7,
-        "stage": 2,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Getting Around Town (Directions & Transport)",
         "title_bg": "Ориентиране в града и транспорт",
         "description_en": "Find the metro, train station, hotel, or bathroom using estar and ir.",
-        "icon": "compass",
+        "icon": "🧭",
     },
     {
         "code": "es_08",
         "target_lang": "es",
         "seq_order": 8,
-        "stage": 2,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Core Verbs in Action (-ar, -er, -ir)",
         "title_bg": "Основни глаголи в действие",
         "description_en": "Speak about speaking, working, eating, reading, and living in the present tense.",
-        "icon": "zap",
+        "icon": "⚡",
     },
     {
         "code": "es_09",
         "target_lang": "es",
         "seq_order": 9,
-        "stage": 3,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Ser vs. Estar & Describing the World",
         "title_bg": "Ser срещу Estar и описание на света",
         "description_en": "Master the difference between permanent qualities (es) and current states (está).",
-        "icon": "scale",
+        "icon": "⚖️",
     },
     {
         "code": "es_10",
         "target_lang": "es",
         "seq_order": 10,
-        "stage": 3,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Family, People & Tener Expressions",
         "title_bg": "Семейство, хора и изрази с tener",
         "description_en": "Talk about friends, family, and feelings like hungry, thirsty, or right (tener hambre/razón).",
-        "icon": "users",
+        "icon": "👨‍👩‍👧",
     },
     {
         "code": "es_11",
         "target_lang": "es",
         "seq_order": 11,
-        "stage": 3,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Likes, Interests & Preferences (Me gusta)",
         "title_bg": "Харесване и предпочитания (Me gusta)",
         "description_en": "Express what you love, like, and prefer in food, books, and travel.",
-        "icon": "heart",
+        "icon": "❤️",
     },
     {
         "code": "es_12",
         "target_lang": "es",
         "seq_order": 12,
-        "stage": 3,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Daily Routine & Reflexive Verbs (me / se)",
         "title_bg": "Дневен режим и възвратни глаголи (се)",
         "description_en": "Wake up, get dressed, go to work, and relax — using 'me/te/se' just like Bulgarian 'се'.",
-        "icon": "sun",
+        "icon": "🌅",
     },
     {
         "code": "es_13",
         "target_lang": "es",
         "seq_order": 13,
-        "stage": 3,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Shopping, Clothes & Colors",
         "title_bg": "Пазаруване, дрехи и цветове",
         "description_en": "Ask for sizes, colors, and try things on in a shop.",
-        "icon": "shopping-bag",
+        "icon": "🛍️",
     },
     {
         "code": "es_14",
         "target_lang": "es",
         "seq_order": 14,
-        "stage": 3,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Weather, Seasons & Nature",
         "title_bg": "Времето, сезоните и природата",
         "description_en": "Talk about sunny days, rain, mountains, and the sea.",
-        "icon": "cloud-sun",
+        "icon": "☀️",
     },
     {
         "code": "es_15",
         "target_lang": "es",
         "seq_order": 15,
-        "stage": 3,
+        "stage": 1,
         "cefr": "A1",
         "title_en": "Health, Body & Pharmacy",
         "title_bg": "Здраве, тяло и аптека",
         "description_en": "Explain what hurts and ask for help at a pharmacy or doctor.",
-        "icon": "activity",
+        "icon": "🩺",
     },
     {
         "code": "es_16",
         "target_lang": "es",
         "seq_order": 16,
-        "stage": 4,
+        "stage": 2,
         "cefr": "A2",
         "title_en": "Making Plans & Near Future (Voy a...)",
         "title_bg": "Правене на планове и близко бъдеще",
         "description_en": "Talk about what you are going to do tonight, tomorrow, and next weekend.",
-        "icon": "calendar",
+        "icon": "📅",
     },
     {
         "code": "es_17",
         "target_lang": "es",
         "seq_order": 17,
-        "stage": 4,
+        "stage": 2,
         "cefr": "A2",
         "title_en": "Conversational Glue & Connectors",
         "title_bg": "Свързващи думи и естествен разговор",
         "description_en": "Sound natural with porque, pero, además, entonces, sin embargo, creo que.",
-        "icon": "message-circle",
+        "icon": "💬",
     },
     {
         "code": "es_18",
         "target_lang": "es",
         "seq_order": 18,
-        "stage": 4,
+        "stage": 2,
         "cefr": "A2",
         "title_en": "Talking About the Past",
         "title_bg": "Разказване в минало време",
         "description_en": "Share what you did today and yesterday using high-frequency past forms.",
-        "icon": "history",
+        "icon": "⏳",
     },
     {
         "code": "es_19",
         "target_lang": "es",
         "seq_order": 19,
-        "stage": 4,
+        "stage": 2,
         "cefr": "A2",
-        "title_en": "Stories, Culture & Curious Facts",
-        "title_bg": "Истории, култура и любопитни факти",
-        "description_en": "Read short engaging stories about Spain, Latin America, art, and science.",
-        "icon": "book-open",
+        "title_en": "Stories, Culture & Childhood Memories",
+        "title_bg": "Истории, култура и спомени",
+        "description_en": "Read short engaging stories about Spain, Latin America, and past habits.",
+        "icon": "🏛️",
     },
     {
         "code": "es_20",
         "target_lang": "es",
         "seq_order": 20,
-        "stage": 4,
+        "stage": 2,
         "cefr": "A2",
         "title_en": "Ideas, Books, AI & Future in Spanish",
         "title_bg": "Идеи, книги, ИИ и бъдещето на испански",
         "description_en": "Express your thoughts on books, philosophy, and technology in clear Spanish.",
-        "icon": "cpu",
+        "icon": "🤖",
     },
+    *PACKS_B1_B2,
 ]
+
+PACK_META_BY_CODE: dict[str, dict[str, Any]] = {p["code"]: p for p in SPANISH_PACKS}
 
 
 # 2. Sound rules for Pack 01 (Stage 0)
@@ -496,6 +505,7 @@ SEED_ITEMS: list[tuple[str, str, str, str, str | None, str, str, str, str, str, 
     ("es_05", "noun", "el coche", "coche", "el", "ел КО-че", "the car", "колата", "In Spain 'el coche' is used for car (in Latin America 'el carro' or 'el auto').", "В Испания за кола се казва el coche (м.р.).", "El coche está en la calle.", "The car is on the street.", "Seat_(car)"),
     ("es_05", "noun", "el sol", "sol", "el", "ел СОЛ", "the sun", "слънцето", "Solar -> el sol (masculine). 'Hace sol' = It's sunny.", "Мъжки род: el sol. Изразът за „Слънчево е“ е „Hace sol“.", "Hoy hace mucho sol en España.", "Today it is very sunny in Spain.", "Sun"),
     ("es_05", "noun", "el mar", "mar", "el", "ел МАР", "the sea", "морето", "Marine -> el mar (masculine).", "Мъжки род: el mar. „На морето“ = „en el mar“ / „en la playa“ (на плажа).", "Me gusta nadar en el mar.", "I like swimming in the sea.", "Mediterranean_Sea"),
+    *ITEMS_A1_TO_B2,
 ]
 
 
@@ -594,6 +604,7 @@ SEED_TRAPS: list[dict[str, Any]] = [
             "bg_bridge": "В българския „градът“ и „университетът“ са в мъжки род, но в испанския всички думи на -dad са винаги в женски род (la ciudad, la universidad)!",
         },
     },
+    *EXTRA_TRAPS,
 ]
 
 
@@ -775,7 +786,8 @@ SEED_STORIES: list[dict[str, Any]] = [
                 "explain": "'un gato blanco' = a white cat (in Spanish the color comes after the noun)."
             }
         }
-    }
+    },
+    *EXTRA_STORIES,
 ]
 
 
@@ -824,6 +836,7 @@ def build_seed_items_payload() -> list[dict[str, Any]]:
     ) in SEED_ITEMS:
         idx = pack_counters.get(pack_code, 1)
         pack_counters[pack_code] = idx + 1
+        pack_meta = PACK_META_BY_CODE.get(pack_code, {})
         rows.append(
             {
                 "target_lang": "es",
@@ -840,8 +853,8 @@ def build_seed_items_payload() -> list[dict[str, Any]]:
                 "bg_bridge": bg_bridge,
                 "example_text": example_text,
                 "example_en": example_en,
-                "cefr": "A0" if pack_code in ("es_01", "es_02", "es_03", "es_04", "es_05") else "A1",
-                "frequency_rank": idx * 10,
+                "cefr": pack_meta.get("cefr", "A1"),
+                "frequency_rank": pack_meta.get("seq_order", 1) * 100 + idx,
             }
         )
     return rows
@@ -868,7 +881,9 @@ def build_cards_for_items(
     """
     r = rng or random.Random(42)
     item_by_text = {it["text"]: it for it in db_items}
-    all_nouns_and_cognates = [it for it in db_items if it["kind"] in ("noun", "cognate", "adjective", "verb")]
+    all_nouns_and_cognates = [
+        it for it in db_items if it["kind"] in ("noun", "cognate", "adjective", "verb", "connector")
+    ]
     all_phrases = [it for it in db_items if it["kind"] == "survival_phrase"]
 
     cards_out: list[tuple[dict[str, Any], list[tuple[str, str]]]] = []
@@ -899,8 +914,13 @@ def build_cards_for_items(
         }
         cards_out.append((card, [(it["id"], "target")]))
 
-    # 2. Visual Word cards + Audio Blur + Say It for Nouns/Cognates/Verbs
+    # 2. 6-Format Spiral for Nouns/Cognates/Verbs/Adjectives:
+    #    (1) visual_word -> (2) diglot_weave -> (3) phrase_situation -> (4) audio_blur -> (5) micro_builder -> (6) say_it
     for it in all_nouns_and_cognates:
+        pack_meta = PACK_META_BY_CODE.get(it.get("pack_code") or "es_01", {})
+        stage_num = pack_meta.get("stage", 1)
+        cefr_val = it.get("cefr") or pack_meta.get("cefr", "A1")
+
         distractors = [
             d["text"]
             for d in all_nouns_and_cognates
@@ -910,13 +930,23 @@ def build_cards_for_items(
             distractors = [d["text"] for d in all_nouns_and_cognates if d["id"] != it["id"]]
         chosen_distractors = r.sample(distractors, k=min(2, len(distractors)))
 
+        en_gloss_distractors = [
+            d["en_gloss"]
+            for d in all_nouns_and_cognates
+            if d["id"] != it["id"] and d["en_gloss"] != it["en_gloss"]
+        ]
+        chosen_en_gloss = r.sample(en_gloss_distractors, k=min(2, len(en_gloss_distractors)))
+
         raw_es = it["text"]
         art = it.get("article")
         noun_part = raw_es[len(art) :].strip() if art and raw_es.startswith(art + " ") else raw_es
         ex_es = it.get("example_text") or raw_es
         ex_en = it.get("example_en") or it["en_gloss"]
+        ex_words = ex_es.split()
 
-        tokens = [{"es": w, "en": ""} for w in ex_es.split()]
+        tokens = [{"es": w, "en": ""} for w in ex_words]
+
+        # Format 1: visual_word (EN -> ES recognition)
         vw_raw = {
             "item_id": it["id"],
             "es": raw_es,
@@ -940,8 +970,6 @@ def build_cards_for_items(
                 "explain": f"'{raw_es}' = {it['en_gloss']} ({it['bg_gloss']}).",
             },
         }
-        vw_validated = validate_and_normalize_card("visual_word", vw_raw, r)
-        stage_num = 0 if it["pack_code"] == "es_01" else 1
         cards_out.append(
             (
                 {
@@ -949,9 +977,9 @@ def build_cards_for_items(
                     "card_type": "visual_word",
                     "stage": stage_num,
                     "pack_code": it["pack_code"],
-                    "cefr": it.get("cefr", "A0"),
+                    "cefr": cefr_val,
                     "topic": "vocabulary",
-                    "content": vw_validated,
+                    "content": validate_and_normalize_card("visual_word", vw_raw, r),
                     "image_url": it.get("image_url"),
                     "image_source": it.get("image_source") or "wikimedia",
                     "image_license": it.get("image_license") or "CC BY-SA",
@@ -966,13 +994,97 @@ def build_cards_for_items(
             )
         )
 
-        # Also create an audio_blur card for the example sentence
-        en_distractors = [
+        # Format 2: diglot_weave (English context with embedded Spanish word)
+        dw_raw = {
+            "segments": [
+                {"type": "en", "text": f"In this situation ({ex_en}), the key Spanish word for '{it['en_gloss']}' is "},
+                {
+                    "type": "es",
+                    "text": raw_es,
+                    "en": it["en_gloss"],
+                    "phonetic": it.get("phonetic_hint") or raw_es,
+                    "item_id": it["id"],
+                },
+                {"type": "en", "text": f" — as in: “{ex_es}”."},
+            ],
+            "question": {
+                "prompt": f"What does '{raw_es}' mean in this bridge sentence?",
+                "options": [it["en_gloss"], *chosen_en_gloss],
+                "answer": 0,
+                "explain": f"'{raw_es}' means '{it['en_gloss']}' ({it['bg_gloss']}).",
+            },
+        }
+        cards_out.append(
+            (
+                {
+                    "target_lang": "es",
+                    "card_type": "diglot_weave",
+                    "stage": stage_num,
+                    "pack_code": it["pack_code"],
+                    "cefr": cefr_val,
+                    "topic": "bridge",
+                    "content": validate_and_normalize_card("diglot_weave", dw_raw, r),
+                    "image_url": it.get("image_url"),
+                    "image_source": it.get("image_source") or "wikimedia",
+                    "image_license": it.get("image_license") or "CC BY-SA",
+                    "image_author": it.get("image_author") or "Wikimedia Commons",
+                    "audio_url": it.get("audio_url"),
+                    "source_url": "https://en.wiktionary.org/wiki/" + it["lemma"].replace(" ", "_"),
+                    "source_license": "CC BY-SA 4.0",
+                    "ai_model": "curated-v1",
+                    "status": "ok",
+                },
+                [(it["id"], "target")],
+            )
+        )
+
+        # Format 3: phrase_situation (Word in full example sentence context)
+        en_sent_distractors = [
             d.get("example_en") or d["en_gloss"]
             for d in all_nouns_and_cognates
             if d["id"] != it["id"] and (d.get("example_en") or d["en_gloss"]) != ex_en
         ]
-        en_picks = r.sample(en_distractors, k=min(2, len(en_distractors)))
+        en_picks = r.sample(en_sent_distractors, k=min(2, len(en_sent_distractors)))
+        ps_word_raw = {
+            "situation_en": f"Using '{raw_es}' ({it['en_gloss']}) in a real sentence:",
+            "es": ex_es,
+            "phonetic": it.get("phonetic_hint") or raw_es,
+            "en": ex_en,
+            "bg_bridge": it.get("bg_bridge"),
+            "tokens": tokens,
+            "reply_preview": None,
+            "question": {
+                "prompt": f"What does '{ex_es}' mean?",
+                "options": [ex_en, *en_picks],
+                "answer": 0,
+                "explain": f"'{ex_es}' = {ex_en} (key word: {raw_es} = {it['en_gloss']}).",
+            },
+        }
+        cards_out.append(
+            (
+                {
+                    "target_lang": "es",
+                    "card_type": "phrase_situation",
+                    "stage": stage_num,
+                    "pack_code": it["pack_code"],
+                    "cefr": cefr_val,
+                    "topic": "context",
+                    "content": validate_and_normalize_card("phrase_situation", ps_word_raw, r),
+                    "image_url": it.get("image_url"),
+                    "image_source": it.get("image_source") or "wikimedia",
+                    "image_license": it.get("image_license") or "CC BY-SA",
+                    "image_author": it.get("image_author") or "Wikimedia Commons",
+                    "audio_url": it.get("audio_url"),
+                    "source_url": "https://en.wiktionary.org/wiki/" + it["lemma"].replace(" ", "_"),
+                    "source_license": "CC BY-SA 4.0",
+                    "ai_model": "curated-v1",
+                    "status": "ok",
+                },
+                [(it["id"], "target")],
+            )
+        )
+
+        # Format 4: audio_blur (Listening comprehension)
         ab_raw = {
             "context_en": f"Listen carefully ({it['en_gloss']}):",
             "es": ex_es,
@@ -990,9 +1102,9 @@ def build_cards_for_items(
                 {
                     "target_lang": "es",
                     "card_type": "audio_blur",
-                    "stage": max(1, stage_num),
+                    "stage": stage_num,
                     "pack_code": it["pack_code"],
-                    "cefr": it.get("cefr", "A0"),
+                    "cefr": cefr_val,
                     "topic": "listening",
                     "content": validate_and_normalize_card("audio_blur", ab_raw, r),
                     "image_url": it.get("image_url"),
@@ -1009,11 +1121,89 @@ def build_cards_for_items(
             )
         )
 
-    # 3. Phrase Situation + Micro Builder + Say It + Shadowing cards for Survival Phrases
+        # Format 5: micro_builder (Assemble the example sentence from word tiles)
+        if len(ex_words) >= 2:
+            extra_tiles = ["no", "muy", "ayer"]
+            distractor_tile = next((t for t in extra_tiles if t not in ex_words), "no")
+            mb_word_raw = {
+                "situation_en": f"Practice '{raw_es}' ({it['en_gloss']}) by building the sentence:",
+                "prompt_en": ex_en,
+                "target_es": ex_es,
+                "tiles": [*ex_words, distractor_tile],
+                "correct_sequence": ex_words,
+                "phonetic": it.get("phonetic_hint") or raw_es,
+                "explain": it.get("bg_bridge") or f"'{ex_es}' = {ex_en}.",
+            }
+            cards_out.append(
+                (
+                    {
+                        "target_lang": "es",
+                        "card_type": "micro_builder",
+                        "stage": stage_num,
+                        "pack_code": it["pack_code"],
+                        "cefr": cefr_val,
+                        "topic": "builder",
+                        "content": validate_and_normalize_card("micro_builder", mb_word_raw, r),
+                        "image_url": it.get("image_url"),
+                        "image_source": it.get("image_source") or "wikimedia",
+                        "image_license": it.get("image_license") or "CC BY-SA",
+                        "image_author": it.get("image_author") or "Wikimedia Commons",
+                        "audio_url": it.get("audio_url"),
+                        "source_url": "https://en.wiktionary.org/wiki/" + it["lemma"].replace(" ", "_"),
+                        "source_license": "CC BY-SA 4.0",
+                        "ai_model": "curated-v1",
+                        "status": "ok",
+                    },
+                    [(it["id"], "target")],
+                )
+            )
+
+        # Format 6: say_it (Active spoken production of the word)
+        say_word_raw = {
+            "situation_en": f"Active Recall — Say '{it['en_gloss']}' ({it['bg_gloss']}) in Spanish:",
+            "prompt_en": f"{it['en_gloss']} — Example: “{ex_en}”",
+            "hint_en": f"Starts with: {raw_es[:3]}...",
+            "target_es": raw_es,
+            "alternative_es": ex_es,
+            "phonetic": it.get("phonetic_hint") or raw_es,
+            "notes": it.get("bg_bridge") or it.get("en_explain"),
+        }
+        cards_out.append(
+            (
+                {
+                    "target_lang": "es",
+                    "card_type": "say_it",
+                    "stage": stage_num,
+                    "pack_code": it["pack_code"],
+                    "cefr": cefr_val,
+                    "topic": "speaking",
+                    "content": validate_and_normalize_card("say_it", say_word_raw, r),
+                    "image_url": it.get("image_url"),
+                    "image_source": it.get("image_source") or "wikimedia",
+                    "image_license": it.get("image_license") or "CC BY-SA",
+                    "image_author": it.get("image_author") or "Wikimedia Commons",
+                    "audio_url": it.get("audio_url"),
+                    "source_url": "https://en.wiktionary.org/wiki/" + it["lemma"].replace(" ", "_"),
+                    "source_license": "CC BY-SA 4.0",
+                    "ai_model": "curated-v1",
+                    "status": "ok",
+                },
+                [(it["id"], "target")],
+            )
+        )
+
+    # 3. 6-Format Spiral for Survival & Conversational Phrases:
+    #    (1) phrase_situation -> (2) diglot_weave -> (3) audio_blur -> (4) micro_builder -> (5) say_it -> (6) shadowing
     for it in all_phrases:
+        pack_meta = PACK_META_BY_CODE.get(it.get("pack_code") or "es_02", {})
+        stage_num = pack_meta.get("stage", 1)
+        cefr_val = it.get("cefr") or pack_meta.get("cefr", "A1")
+
         en_distractors = [d["en_gloss"] for d in all_phrases if d["id"] != it["id"]]
         chosen_en = r.sample(en_distractors, k=min(2, len(en_distractors)))
         words = it["text"].split()
+
+        # Format 1: phrase_situation
         ps_raw = {
             "situation_en": it.get("en_explain") or f"When you want to say: '{it['en_gloss']}'",
             "es": it["text"],
@@ -1037,9 +1227,9 @@ def build_cards_for_items(
                 {
                     "target_lang": "es",
                     "card_type": "phrase_situation",
-                    "stage": 1 if it["pack_code"] in ("es_02", "es_03") else 2,
+                    "stage": stage_num,
                     "pack_code": it["pack_code"],
-                    "cefr": "A0",
+                    "cefr": cefr_val,
                     "topic": "situations",
                     "content": validate_and_normalize_card("phrase_situation", ps_raw, r),
                     "image_url": it.get("image_url"),
@@ -1056,7 +1246,88 @@ def build_cards_for_items(
             )
         )
 
-        # Micro Builder card if phrase has >= 2 words
+        # Format 2: diglot_weave
+        dw_phrase_raw = {
+            "segments": [
+                {"type": "en", "text": f"When you want to express “{it['en_gloss']}”, a native speaker says: "},
+                {
+                    "type": "es",
+                    "text": it["text"],
+                    "en": it["en_gloss"],
+                    "phonetic": it.get("phonetic_hint") or it["text"],
+                    "item_id": it["id"],
+                },
+                {"type": "en", "text": "."},
+            ],
+            "question": {
+                "prompt": f"When do you use '{it['text']}'?",
+                "options": [it["en_gloss"], *chosen_en],
+                "answer": 0,
+                "explain": f"'{it['text']}' = {it['en_gloss']} ({it['bg_gloss']}).",
+            },
+        }
+        cards_out.append(
+            (
+                {
+                    "target_lang": "es",
+                    "card_type": "diglot_weave",
+                    "stage": stage_num,
+                    "pack_code": it["pack_code"],
+                    "cefr": cefr_val,
+                    "topic": "bridge",
+                    "content": validate_and_normalize_card("diglot_weave", dw_phrase_raw, r),
+                    "image_url": it.get("image_url"),
+                    "image_source": it.get("image_source") or "wikimedia",
+                    "image_license": it.get("image_license") or "CC BY-SA",
+                    "image_author": it.get("image_author") or "Wikimedia Commons",
+                    "audio_url": it.get("audio_url"),
+                    "source_url": "https://en.wikivoyage.org/wiki/Spanish_phrasebook",
+                    "source_license": "CC BY-SA 4.0",
+                    "ai_model": "curated-v1",
+                    "status": "ok",
+                },
+                [(it["id"], "target")],
+            )
+        )
+
+        # Format 3: audio_blur
+        ab_phrase_raw = {
+            "context_en": it.get("en_explain") or "Listen and identify the Spanish expression:",
+            "es": it["text"],
+            "phonetic": it.get("phonetic_hint") or it["text"],
+            "en": it["en_gloss"],
+            "question": {
+                "prompt": "What did the speaker just say?",
+                "options": [it["en_gloss"], *chosen_en],
+                "answer": 0,
+                "explain": f"'{it['text']}' means '{it['en_gloss']}'.",
+            },
+        }
+        cards_out.append(
+            (
+                {
+                    "target_lang": "es",
+                    "card_type": "audio_blur",
+                    "stage": stage_num,
+                    "pack_code": it["pack_code"],
+                    "cefr": cefr_val,
+                    "topic": "listening",
+                    "content": validate_and_normalize_card("audio_blur", ab_phrase_raw, r),
+                    "image_url": it.get("image_url"),
+                    "image_source": it.get("image_source") or "wikimedia",
+                    "image_license": it.get("image_license") or "CC BY-SA",
+                    "image_author": it.get("image_author") or "Wikimedia Commons",
+                    "audio_url": it.get("audio_url"),
+                    "source_url": "https://en.wikivoyage.org/wiki/Spanish_phrasebook",
+                    "source_license": "CC BY-SA 4.0",
+                    "ai_model": "curated-v1",
+                    "status": "ok",
+                },
+                [(it["id"], "target")],
+            )
+        )
+
+        # Format 4: Micro Builder card if phrase has >= 2 words
         if len(words) >= 2:
             extra_tiles = ["el", "no", "casa"]
             distractor_tile = next((t for t in extra_tiles if t not in words), "el")
@@ -1074,9 +1345,9 @@ def build_cards_for_items(
                     {
                         "target_lang": "es",
                         "card_type": "micro_builder",
-                        "stage": 1 if it["pack_code"] in ("es_02", "es_03") else 2,
+                        "stage": stage_num,
                         "pack_code": it["pack_code"],
-                        "cefr": "A0",
+                        "cefr": cefr_val,
                         "topic": "builder",
                         "content": validate_and_normalize_card("micro_builder", mb_raw, r),
                         "image_url": it.get("image_url"),
@@ -1093,7 +1364,7 @@ def build_cards_for_items(
                 )
             )
 
-        # Say It (Active speaking recall) card
+        # Format 5: Say It (Active speaking recall) card
         say_raw = {
             "situation_en": it.get("en_explain") or "Say this out loud in Spanish:",
             "prompt_en": it["en_gloss"],
@@ -1108,9 +1379,9 @@ def build_cards_for_items(
                 {
                     "target_lang": "es",
                     "card_type": "say_it",
-                    "stage": 2,
+                    "stage": stage_num,
                     "pack_code": it["pack_code"],
-                    "cefr": "A0",
+                    "cefr": cefr_val,
                     "topic": "speaking",
                     "content": validate_and_normalize_card("say_it", say_raw, r),
                     "image_url": it.get("image_url"),
@@ -1127,7 +1398,7 @@ def build_cards_for_items(
             )
         )
 
-        # Shadowing (Voice Echo) card
+        # Format 6: Shadowing (Voice Echo) card
         clean_words = [re.sub(r"[^\wáéíóúñüÁÉÍÓÚÑÜ]", "", w).lower() for w in words]
         clean_words = [w for w in clean_words if w]
         if clean_words:
@@ -1142,9 +1413,9 @@ def build_cards_for_items(
                     {
                         "target_lang": "es",
                         "card_type": "shadowing",
-                        "stage": 2,
+                        "stage": stage_num,
                         "pack_code": it["pack_code"],
-                        "cefr": "A0",
+                        "cefr": cefr_val,
                         "topic": "pronunciation",
                         "content": validate_and_normalize_card("shadowing", sh_raw, r),
                         "image_url": it.get("image_url"),

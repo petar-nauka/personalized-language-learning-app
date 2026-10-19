@@ -14,11 +14,13 @@ from ezik_worker.validators import (
 )
 
 
-def test_twenty_packs_present_and_ordered() -> None:
-    assert len(SPANISH_PACKS) == 20
+def test_forty_packs_present_and_ordered() -> None:
+    assert len(SPANISH_PACKS) == 40
     codes = [p["code"] for p in SPANISH_PACKS]
     assert codes[0] == "es_01"
-    assert codes[-1] == "es_20"
+    assert codes[-1] == "es_40"
+    cefr_levels = {p["cefr"] for p in SPANISH_PACKS}
+    assert cefr_levels == {"A0", "A1", "A2", "B1", "B2"}
 
 
 def test_mixed_script_detection() -> None:

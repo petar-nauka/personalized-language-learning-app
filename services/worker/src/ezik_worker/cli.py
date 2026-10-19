@@ -114,6 +114,7 @@ def cmd_generate_cards(args: argparse.Namespace) -> None:
                 or content.get("grapheme")
                 or content.get("title_es")
                 or content.get("prompt")
+                or (content.get("question") or {}).get("prompt")
                 or ""
             )
             seen_keys.add((c["card_type"], c.get("pack_code") or "", sig))
@@ -130,6 +131,7 @@ def cmd_generate_cards(args: argparse.Namespace) -> None:
                 or content.get("grapheme")
                 or content.get("title_es")
                 or content.get("prompt")
+                or (content.get("question") or {}).get("prompt")
                 or ""
             )
             key = (card["card_type"], card.get("pack_code") or "", sig)

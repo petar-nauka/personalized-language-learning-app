@@ -974,9 +974,25 @@ export function FeedCardRenderer({
           marginBottom: 6,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span className="badge">{CARD_TYPE_LABELS[card.card_type] || card.card_type}</span>
           <span className="badge">{card.cefr}</span>
+          {card.item_step && card.item_total_steps && card.item_total_steps > 1 && (
+            <span
+              className="badge"
+              title={`Format ${card.item_step} of ${card.item_total_steps} for this word/phrase`}
+              style={{
+                color: "var(--accent)",
+                borderColor: "var(--accent)",
+                fontWeight: 700,
+                letterSpacing: "0.02em",
+              }}
+            >
+              Step {card.item_step}/{card.item_total_steps}{" "}
+              {"●".repeat(Math.min(card.item_step, card.item_total_steps))}
+              {"○".repeat(Math.max(0, card.item_total_steps - card.item_step))}
+            </span>
+          )}
           {card.is_review && <span className="badge badge-accent">🔄 Review</span>}
         </div>
         {answered && (

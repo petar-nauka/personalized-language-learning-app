@@ -186,6 +186,8 @@ export interface FeedCardDTO {
   target_item_id?: string | null;
   is_review?: boolean;
   saved?: boolean;
+  item_step?: number;
+  item_total_steps?: number;
 }
 
 export interface PackDTO {

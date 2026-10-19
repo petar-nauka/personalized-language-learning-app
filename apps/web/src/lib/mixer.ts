@@ -8,24 +8,23 @@ import type {
 } from "./types";
 import type { ItemStateRow } from "./fsrs";
 
-const INTRO_CARD_TYPES: Set<CardType> = new Set([
-  "sound_rule",
-  "visual_word",
-  "phrase_situation",
-  "diglot_weave",
-  "story_xray",
-  "trap_choice",
-]);
-
-const PRACTICE_CARD_TYPES: Set<CardType> = new Set([
-  "micro_builder",
-  "audio_blur",
-  "say_it",
-  "shadowing",
-  "trap_choice",
-]);
+const FORMAT_ORDER_RANK: Record<CardType, number> = {
+  sound_rule: 1,
+  visual_word: 1,
+  phrase_situation: 2,
+  diglot_weave: 3,
+  audio_blur: 4,
+  micro_builder: 5,
+  say_it: 6,
+  shadowing: 7,
+  trap_choice: 8,
+  story_xray: 9,
+};
 
 const AUDIO_REQUIRED_TYPES: Set<CardType> = new Set(["audio_blur", "shadowing"]);
+
+/** Minimum number of multi-format exposures before a word counts as completed in a pack */
+export const MIN_EXPOSURES_PER_ITEM = 5;
 
 export async function getOrCreateUserSettings(
   userId: string,
@@ -130,7 +129,9 @@ export async function getTodayStats(
 export async function assembleFeedBatch(
   userId: string,
   limit: number = 10,
-  overridePack?: string | null
+  overridePack?: string | null,
+  excludeCardIds: string[] = [],
+  recentWrongItemIds: string[] = []
 ): Promise<{
   cards: FeedCardDTO[];
   activePack: PackDTO | null;
@@ -140,31 +141,48 @@ export async function assembleFeedBatch(
 }> {
   let settings = await getOrCreateUserSettings(userId, "es");
 
-  // 1. Load all packs and user's item states
-  const [packs, allItems, itemStates, recentEvents] = await Promise.all([
+  // 1. Load all packs, items, user's item states, cards, and recent events in parallel
+  const [packs, allItems, itemStates, recentEvents, cardsRaw, cardLinks] = await Promise.all([
     supaFetch<PackDTO[]>("ezik_app_packs", {
       params: { target_lang: "eq.es", order: "seq_order.asc" },
     }),
-    supaFetch<Array<{ id: string; pack_code: string; seq_order: number; audio_url: string | null; image_url: string | null }>>(
-      "ezik_app_items",
-      {
-        params: {
-          target_lang: "eq.es",
-          select: "id,pack_code,seq_order,audio_url,image_url",
-          order: "pack_code.asc,seq_order.asc",
-        },
-      }
-    ),
+    supaFetch<
+      Array<{
+        id: string;
+        pack_code: string;
+        seq_order: number;
+        kind: string;
+        audio_url: string | null;
+        image_url: string | null;
+      }>
+    >("ezik_app_items", {
+      params: {
+        target_lang: "eq.es",
+        select: "id,pack_code,seq_order,kind,audio_url,image_url",
+        order: "pack_code.asc,seq_order.asc",
+      },
+    }),
     supaFetch<ItemStateRow[]>("ezik_app_item_state", {
       params: { user_id: `eq.${userId}` },
     }),
     supaFetch<Array<{ card_id: string; event_type: string }>>("ezik_app_events", {
       params: {
         user_id: `eq.${userId}`,
-        event_type: "in.(complete,know,save)",
+        event_type: "in.(complete,answer_correct,know,save)",
         order: "created_at.desc",
-        limit: "400",
+        limit: "600",
       },
+    }),
+    supaFetch<FeedCardDTO[]>("ezik_app_cards", {
+      params: {
+        target_lang: "eq.es",
+        status: "eq.ok",
+        order: "pack_code.asc,stage.asc,created_at.asc",
+        limit: "1500",
+      },
+    }),
+    supaFetch<Array<{ card_id: string; item_id: string; role: string }>>("ezik_app_card_items", {
+      params: { select: "card_id,item_id,role", limit: "3000" },
     }),
   ]);
 
@@ -174,16 +192,32 @@ export async function assembleFeedBatch(
   }
   const itemMetaById = new Map(allItems.map((it) => [it.id, it]));
 
-  // 2. Check Auto-Progression: if >= 75% of items in active_pack_code are seen or mastered, unlock next pack
+  const targetItemByCard = new Map<string, string>();
+  const cardCountByItem = new Map<string, number>();
+  for (const link of cardLinks) {
+    if (link.role === "target" || !targetItemByCard.has(link.card_id)) {
+      targetItemByCard.set(link.card_id, link.item_id);
+      cardCountByItem.set(link.item_id, (cardCountByItem.get(link.item_id) || 0) + 1);
+    }
+  }
+
+  const requiredExposuresFor = (itemId: string, kind?: string): number => {
+    if (kind === "sound_rule") return 1;
+    const totalCards = cardCountByItem.get(itemId) || 1;
+    return Math.min(MIN_EXPOSURES_PER_ITEM, totalCards);
+  };
+
+  // 2. Check Auto-Progression: if >= 75% of items in active_pack_code have reached MIN_EXPOSURES_PER_ITEM (5 formats) or mastered, unlock next pack
   let activePackCode = overridePack || settings.active_pack_code || "es_01";
   if (!overridePack) {
     const packItems = allItems.filter((it) => it.pack_code === activePackCode);
     if (packItems.length > 0) {
-      const seenInPack = packItems.filter((it) => {
+      const completedInPack = packItems.filter((it) => {
         const st = stateByItem.get(it.id);
-        return st && (st.seen_count >= 1 || st.mastered);
+        const req = requiredExposuresFor(it.id, it.kind);
+        return st && (st.seen_count >= req || st.mastered);
       }).length;
-      if (seenInPack / packItems.length >= 0.75) {
+      if (completedInPack / packItems.length >= 0.75) {
         const curPackIdx = packs.findIndex((p) => p.code === activePackCode);
         if (curPackIdx >= 0 && curPackIdx + 1 < packs.length) {
           const nextPack = packs[curPackIdx + 1];
@@ -212,36 +246,17 @@ export async function assembleFeedBatch(
   const activePack = packs.find((p) => p.code === activePackCode) || packs[0] || null;
   const stage = activePack ? activePack.stage : settings.current_stage;
 
-  // 3. Load candidate cards and card-item links
-  const [cardsRaw, cardLinks] = await Promise.all([
-    supaFetch<FeedCardDTO[]>("ezik_app_cards", {
-      params: {
-        target_lang: "eq.es",
-        status: "eq.ok",
-        order: "pack_code.asc,stage.asc,created_at.asc",
-        limit: "1000",
-      },
-    }),
-    supaFetch<Array<{ card_id: string; item_id: string; role: string }>>("ezik_app_card_items", {
-      params: { select: "card_id,item_id,role", limit: "2000" },
-    }),
-  ]);
-
-  const targetItemByCard = new Map<string, string>();
-  for (const link of cardLinks) {
-    if (link.role === "target" || !targetItemByCard.has(link.card_id)) {
-      targetItemByCard.set(link.card_id, link.item_id);
-    }
-  }
-
+  const excludeSet = new Set(excludeCardIds.filter(Boolean));
   const completedCardIds = new Set(
-    recentEvents.filter((e) => e.event_type === "complete").map((e) => e.card_id)
+    recentEvents
+      .filter((e) => e.event_type === "complete" || e.event_type === "answer_correct")
+      .map((e) => e.card_id)
   );
   const savedCardIds = new Set(
     recentEvents.filter((e) => e.event_type === "save").map((e) => e.card_id)
   );
 
-  // Enrich cards with latest item image/audio if card didn't have it at creation time
+  // 3. Enrich cards with latest item image/audio & filter out muted/mastered
   const allCards: FeedCardDTO[] = cardsRaw
     .map((c) => {
       const itemId = targetItemByCard.get(c.id) || c.content?.item_id || null;
@@ -265,93 +280,223 @@ export async function assembleFeedBatch(
       return true;
     });
 
-  // Partition candidate pools:
-  // Pool A: Due FSRS reviews (due <= now, seen_count >= 1, not mastered)
+  // 4. Group and sort cards per item by pedagogical format order (Step 1 -> Step 6)
+  const cardsByItem = new Map<string, FeedCardDTO[]>();
+  const standaloneCards: FeedCardDTO[] = [];
+
+  for (const card of allCards) {
+    if (card.target_item_id) {
+      const list = cardsByItem.get(card.target_item_id) || [];
+      list.push(card);
+      cardsByItem.set(card.target_item_id, list);
+    } else {
+      standaloneCards.push(card);
+    }
+  }
+
+  for (const [itemId, list] of cardsByItem.entries()) {
+    list.sort(
+      (a, b) => (FORMAT_ORDER_RANK[a.card_type] ?? 99) - (FORMAT_ORDER_RANK[b.card_type] ?? 99)
+    );
+    const total = list.length;
+    list.forEach((c, idx) => {
+      c.item_step = idx + 1;
+      c.item_total_steps = total;
+    });
+    cardsByItem.set(itemId, list);
+  }
+
+  // 5. Build the Active Working Set of items for the Multi-Format Spiral
+  // We keep 4–5 items active at a time and spiral through all 5–6 of their card formats
+  const workingSetItemIds: string[] = [];
+  const pushWorkingItem = (itemId: string) => {
+    if (!itemId || workingSetItemIds.includes(itemId)) return;
+    if (stateByItem.get(itemId)?.mastered) return;
+    const itemCards = cardsByItem.get(itemId);
+    if (!itemCards || itemCards.length === 0) return;
+    workingSetItemIds.push(itemId);
+  };
+
+  // 5a. Priority: recently missed items in this session
+  for (const wrongId of recentWrongItemIds) {
+    pushWorkingItem(wrongId);
+  }
+
+  // 5b. Items in the active pack (in sequence order) that haven't finished their 5-format spiral
+  const activePackItems = allItems.filter((it) => it.pack_code === activePackCode);
+  for (const it of activePackItems) {
+    const st = stateByItem.get(it.id);
+    const req = requiredExposuresFor(it.id, it.kind);
+    if (!st || st.seen_count < req) {
+      pushWorkingItem(it.id);
+    }
+  }
+
+  // 5c. Partially learned items from earlier packs that still have 1 <= seen_count < 5
+  for (const it of allItems) {
+    if (workingSetItemIds.length >= 6) break;
+    const st = stateByItem.get(it.id);
+    const req = requiredExposuresFor(it.id, it.kind);
+    if (st && st.seen_count >= 1 && st.seen_count < req) {
+      pushWorkingItem(it.id);
+    }
+  }
+
+  // 5d. If active pack has < 4 items (e.g. 3-item pack), include items from the next pack so spacing between repeats is always >= 2 cards
+  if (workingSetItemIds.length < 4) {
+    const curPackIdx = packs.findIndex((p) => p.code === activePackCode);
+    for (let offset = 1; offset <= 3 && workingSetItemIds.length < 5; offset++) {
+      const nextPack = packs[curPackIdx + offset];
+      if (!nextPack) break;
+      for (const it of allItems.filter((x) => x.pack_code === nextPack.code)) {
+        pushWorkingItem(it.id);
+        if (workingSetItemIds.length >= 5) break;
+      }
+    }
+  }
+
+  // 5e. Fallback if user has completed almost everything
+  if (workingSetItemIds.length === 0) {
+    for (const it of activePackItems) pushWorkingItem(it.id);
+    for (const it of allItems) {
+      if (workingSetItemIds.length >= 6) break;
+      pushWorkingItem(it.id);
+    }
+  }
+
+  // 6. Due FSRS review pool (for items that already completed their initial spiral or are due)
   const nowMs = Date.now();
   const dueItemIds = new Set(
     itemStates
       .filter((st) => !st.mastered && st.seen_count >= 1 && new Date(st.due).getTime() <= nowMs)
       .map((st) => st.item_id)
   );
-
   const reviewPool = allCards.filter(
-    (c) => c.target_item_id && dueItemIds.has(c.target_item_id) && !completedCardIds.has(c.id)
-  );
-
-  // Pool B: New / Intro cards from active pack (or adjacent packs if active pack is nearly done)
-  const introPoolActive = allCards.filter(
     (c) =>
-      c.pack_code === activePackCode &&
-      INTRO_CARD_TYPES.has(c.card_type) &&
+      c.target_item_id &&
+      dueItemIds.has(c.target_item_id) &&
+      !excludeSet.has(c.id) &&
       !completedCardIds.has(c.id)
-  );
-  const introPoolFallback = allCards.filter(
-    (c) => INTRO_CARD_TYPES.has(c.card_type) && !completedCardIds.has(c.id)
-  );
-
-  // Pool C: Active practice cards (micro_builder, audio_blur, say_it, shadowing, trap_choice)
-  // Only for items already seen OR being introduced in this batch
-  const practicePool = allCards.filter(
-    (c) => PRACTICE_CARD_TYPES.has(c.card_type) && !completedCardIds.has(c.id)
   );
 
   const selected: FeedCardDTO[] = [];
-  const usedIds = new Set<string>();
-  const batchIntroducedItemIds: string[] = [];
+  const usedIds = new Set<string>(excludeSet);
 
-  const canFollow = (candidate: FeedCardDTO): boolean => {
+  const canFollow = (candidate: FeedCardDTO, relaxItemGap = false): boolean => {
     if (selected.length === 0) return true;
     const prev = selected[selected.length - 1];
-    // Avoid two identical card_types in a row once past the first 4 sound_rule/visual_word cards
-    if (prev.card_type === candidate.card_type && candidate.card_type !== "visual_word") {
-      return false;
-    }
+
+    // Never show the exact same target item twice in a row
     if (prev.target_item_id && prev.target_item_id === candidate.target_item_id) {
       return false;
     }
+
+    // Keep at least 2 other cards between two formats of the same word when possible
+    if (!relaxItemGap && selected.length >= 2) {
+      const prev2 = selected[selected.length - 2];
+      if (prev2.target_item_id && prev2.target_item_id === candidate.target_item_id) {
+        return false;
+      }
+    }
+
+    // Avoid two identical card_types in a row after the initial introduction card (step 1)
+    if (
+      prev.card_type === candidate.card_type &&
+      (candidate.item_step ?? 1) > 1 &&
+      candidate.card_type !== "sound_rule"
+    ) {
+      return false;
+    }
+
     return true;
   };
 
-  const pickFrom = (pool: FeedCardDTO[], markReview = false): FeedCardDTO | null => {
-    const valid = pool.filter((c) => !usedIds.has(c.id) && canFollow(c));
-    const list = valid.length > 0 ? valid : pool.filter((c) => !usedIds.has(c.id));
+  // Pick the next format card in the 1->6 spiral for a given itemId
+  const pickNextFormatForItem = (itemId: string, relaxItemGap = false): FeedCardDTO | null => {
+    const itemCards = cardsByItem.get(itemId) || [];
+    // Prefer cards not yet completed in previous sessions and not used in this batch
+    const uncompleted = itemCards.filter(
+      (c) => !usedIds.has(c.id) && !completedCardIds.has(c.id)
+    );
+    const pool =
+      uncompleted.length > 0 ? uncompleted : itemCards.filter((c) => !usedIds.has(c.id));
+
+    for (const candidate of pool) {
+      if (canFollow(candidate, relaxItemGap)) {
+        usedIds.add(candidate.id);
+        return candidate;
+      }
+    }
+    return null;
+  };
+
+  const pickFromPool = (pool: FeedCardDTO[], markReview = false): FeedCardDTO | null => {
+    const valid = pool.filter((c) => !usedIds.has(c.id) && canFollow(c, false));
+    const list =
+      valid.length > 0 ? valid : pool.filter((c) => !usedIds.has(c.id) && canFollow(c, true));
     if (list.length === 0) return null;
     const chosen = list[0];
     usedIds.add(chosen.id);
-    if (chosen.target_item_id) {
-      batchIntroducedItemIds.push(chosen.target_item_id);
-    }
     return { ...chosen, is_review: markReview };
   };
 
-  // Assemble slots (60% new/intro, 25% active practice + short-term echo, 15% FSRS review)
-  for (let i = 0; i < limit; i++) {
+  // 7. Assemble batch by spiraling through Working Set items across their 5–6 formats
+  let cursor = 0;
+  for (let slot = 0; slot < limit; slot++) {
     let picked: FeedCardDTO | null = null;
 
     // Slot 2 and 7: FSRS Due Review if available
-    if ((i === 2 || i === 7) && reviewPool.length > 0) {
-      picked = pickFrom(reviewPool, true);
+    if ((slot === 2 || slot === 7) && reviewPool.length > 0) {
+      picked = pickFromPool(reviewPool, true);
     }
 
-    // Slot 4 and 8: Short-term Echo Practice for an item introduced 3-4 cards earlier in this batch!
-    if (!picked && (i === 4 || i === 8 || i === 6)) {
-      const echoPool = practicePool.filter(
-        (c) =>
-          c.target_item_id &&
-          (batchIntroducedItemIds.includes(c.target_item_id) ||
-            (stateByItem.get(c.target_item_id)?.seen_count ?? 0) >= 1)
+    // Slot 5 or 9: Standalone pack story / trap card if available in active pack
+    if (!picked && (slot === 5 || slot === 9)) {
+      const packStandalone = standaloneCards.filter(
+        (c) => c.pack_code === activePackCode && !completedCardIds.has(c.id)
       );
-      picked = pickFrom(echoPool, false);
+      if (packStandalone.length > 0) {
+        picked = pickFromPool(packStandalone, false);
+      }
     }
 
-    // Default: New / Intro card from active pack
-    if (!picked) {
-      picked = pickFrom(introPoolActive, false) || pickFrom(introPoolFallback, false);
+    // Main Spiral: cycle round-robin through workingSetItemIds to show each word in its next format
+    if (!picked && workingSetItemIds.length > 0) {
+      for (let attempt = 0; attempt < workingSetItemIds.length; attempt++) {
+        const itemId = workingSetItemIds[(cursor + attempt) % workingSetItemIds.length];
+        const candidate = pickNextFormatForItem(itemId, false);
+        if (candidate) {
+          picked = candidate;
+          cursor = (cursor + attempt + 1) % workingSetItemIds.length;
+          break;
+        }
+      }
+      // Relax 2-card item gap if working set is small
+      if (!picked) {
+        for (let attempt = 0; attempt < workingSetItemIds.length; attempt++) {
+          const itemId = workingSetItemIds[(cursor + attempt) % workingSetItemIds.length];
+          const candidate = pickNextFormatForItem(itemId, true);
+          if (candidate) {
+            picked = candidate;
+            cursor = (cursor + attempt + 1) % workingSetItemIds.length;
+            break;
+          }
+        }
+      }
     }
 
-    // Fallback to any unseen card or any card if user completed everything
+    // Fallback to any remaining uncompleted card in active pack or all cards
     if (!picked) {
-      picked = pickFrom(practicePool, false) || pickFrom(allCards, false);
+      const activeRemaining = allCards.filter(
+        (c) => c.pack_code === activePackCode && !completedCardIds.has(c.id)
+      );
+      picked =
+        pickFromPool(activeRemaining, false) ||
+        pickFromPool(
+          allCards.filter((c) => !completedCardIds.has(c.id)),
+          false
+        ) ||
+        pickFromPool(allCards, false);
     }
 
     if (picked) {
@@ -368,3 +513,4 @@ export async function assembleFeedBatch(
     todayStats,
   };
 }
+

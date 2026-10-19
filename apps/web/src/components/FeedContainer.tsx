@@ -93,7 +93,7 @@ export function FeedContainer() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            eventType: "impression",
+            eventType: null,
             activeSecondsDelta: delta,
           }),
         }).catch(() => {});
@@ -170,7 +170,7 @@ export function FeedContainer() {
       body: JSON.stringify({
         cardId: card.id,
         itemId: card.target_item_id,
-        eventType: "mark_known",
+        eventType: "know",
       }),
     }).catch(() => {});
     showToast("✓ Marked as known! Moving to next card.");
@@ -184,7 +184,7 @@ export function FeedContainer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           itemId: word.item_id,
-          eventType: "mark_known",
+          eventType: "know",
         }),
       }).catch(() => {});
     }

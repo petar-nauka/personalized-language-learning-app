@@ -2,7 +2,7 @@
 
 🇬🇧 English · 🇧🇬 [Български](README.bg.md)
 
-**Ezik** is an open-source web app (Next.js 15 PWA + Python content factory + Supabase/PostgreSQL) for learning a language from absolute zero (`A0 → A1 → A2`) through a vertical feed of interactive cards, just like Reels / TikTok (`scroll-snap-type: y mandatory`).
+**Ezik** is an open-source web app (Next.js 15 PWA + Python content factory + Supabase/PostgreSQL) for learning a language from absolute zero to upper-intermediate (`A0 → A1 → A2 → B1 → B2`) through a vertical feed of interactive cards, just like Reels / TikTok (`scroll-snap-type: y mandatory`).
 
 The first course is **Spanish**, built for Bulgarian and English speakers — but the app is language-agnostic, and **you can add any language you want** (see [Adding new languages](#-adding-new-languages)).
 
@@ -24,8 +24,8 @@ Every card takes **8–15 seconds** and combines **real, properly licensed photo
   9. `shadowing` — speak along with karaoke-style word highlighting (`word_timings`).
   10. `trap_choice` — classic beginner traps (`ser` vs `estar`, false friends, gender exceptions).
 - **X-ray on every word (`XRaySheet`):** tapping any Spanish word opens a bottom sheet with pronunciation, English and Bulgarian translation, a language bridge (`bg_bridge`), audio (`1x` and `0.75x`) and an `✓ I already know this` button.
-- **FSRS v5 memory + short-term Echo loop:** a word you get wrong comes back 3–5 cards later in a different format, and long-term review is scheduled automatically based on memory strength (`0–5` bars).
-- **A curriculum of 20 packs (`/today`):** a structured programme from Pack 01 to Pack 20, with automatic unlocking at 75% coverage — or pick any pack at any time.
+- **6-step repetition spiral + FSRS v5 memory:** every word or phrase appears in **6 different card formats** (`Step 1/6 ●○○○○○` → `Step 6/6 ●●●●●●`), spaced 2–3 other words apart, before you move on. A word you get wrong comes back a few cards later in a new format, and long-term review is scheduled automatically based on memory strength (`0–5` bars).
+- **A curriculum of 40 packs from A0 to B2 (`/today`):** a structured programme from Pack 01 (`A0`) to Pack 40 (`B2`), with tabs to filter by CEFR level (`ALL`, `A0`, `A1`, `A2`, `B1`, `B2`), automatic unlocking at 75% coverage — or pick any pack at any time.
 - **Personal dictionary (`/words`):** search, filter by status (`all`, `learning`, `due`, `mastered`), memory-strength indicator `0–5`, audio and quick "already known" marking.
 - **Personalized:** daily goal, number of new words per day, voice accent (`es-ES` / `es-MX`), autoplay, slow-audio default, "on the subway without headphones" mute mode, and how much native-language help you want.
 
@@ -99,7 +99,7 @@ Spanish is just the first course. **You can add any language — just ask your A
 
 Open the project in your AI coding assistant (Claude Code, Cursor, Codex, Gemini CLI, etc.) and say something like:
 
-> "Add Italian as a new target language, with the same 20-pack structure as Spanish, and generate the images, audio and cards for it."
+> "Add Italian as a new target language, with the same 40-pack A0–B2 structure as Spanish, and generate the images, audio and cards for it."
 
 The architecture is ready for this:
 - Every core table (`ezik_app_packs`, `ezik_app_items`, `ezik_app_cards`, `ezik_app_settings`) has a `target_lang` column.
@@ -126,6 +126,6 @@ This project is released under the **MIT License** — anyone is free to use, mo
 
 ## 🇧🇬 Накратко на български
 
-**Ezik** е безплатно приложение с отворен код за учене на чужд език от нулата чрез вертикална лента от кратки интерактивни карти, като в Reels/TikTok. Всяка карта отнема 8–15 секунди и съчетава снимка, произношение от носител (нормално и бавно), превод при докосване на всяка дума и научен алгоритъм за дългосрочно запомняне (FSRS). Първият курс е испански за българи, но можете да добавите **всеки език**: просто кажете на своя ИИ асистент да го добави.
+**Ezik** е безплатно приложение с отворен код за учене на чужд език от нулата до ниво B2 (40 пакета) чрез вертикална лента от кратки интерактивни карти, като в Reels/TikTok. Всяка карта отнема 8–15 секунди и съчетава снимка, произношение (нормално и бавно), превод при докосване на всяка дума и научен алгоритъм за дългосрочно запомняне (FSRS). Всяка дума се упражнява в 6 различни формата, преди да продължите напред. Първият курс е испански за българи, но можете да добавите **всеки език**: просто кажете на своя ИИ асистент да го добави.
 
 👉 Пълното описание на български: [README.bg.md](README.bg.md)

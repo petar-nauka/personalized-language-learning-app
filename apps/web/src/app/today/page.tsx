@@ -11,6 +11,7 @@ export default function TodayPage() {
   const [packs, setPacks] = useState<PackDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [switchingPack, setSwitchingPack] = useState<string | null>(null);
+  const [cefrFilter, setCefrFilter] = useState<string>("ALL");
 
   useEffect(() => {
     fetch("/api/today")
@@ -71,7 +72,7 @@ export default function TodayPage() {
               Today&apos;s Progress
             </h1>
             <p style={{ color: "var(--muted)", fontSize: "0.86rem" }}>
-              Spanish from Absolute Zero (A0 → A1 → A2)
+              Spanish from Zero to Fluency (A0 → A1 → A2 → B1 → B2)
             </p>
           </div>
           <Link href="/" className="primary-btn" style={{ minHeight: 40, padding: "8px 14px" }}>
@@ -143,15 +144,35 @@ export default function TodayPage() {
           </div>
         </section>
 
-        {/* Curriculum Roadmap (20 Packs) */}
+        {/* Curriculum Roadmap (40 Packs: A0 -> B2) */}
         <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div>
             <h2 style={{ fontSize: "1.15rem", fontWeight: 700 }}>
-              Curriculum Roadmap (20 Packs)
+              Curriculum Roadmap ({packs.length || 40} Packs • A0 → B2)
             </h2>
             <p style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
-              Auto-unlocks next pack at 75% seen items, or tap any pack below to jump right in.
+              Filter by CEFR level or tap any pack below to switch your active feed.
             </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
+            {["ALL", "A0", "A1", "A2", "B1", "B2"].map((lvl) => (
+              <button
+                key={lvl}
+                type="button"
+                onClick={() => setCefrFilter(lvl)}
+                className="secondary-btn"
+                style={{
+                  minHeight: 34,
+                  padding: "4px 6px",
+                  fontSize: "0.78rem",
+                  borderColor: cefrFilter === lvl ? "var(--accent)" : "var(--border)",
+                  color: cefrFilter === lvl ? "var(--accent)" : "var(--muted)",
+                }}
+              >
+                {lvl}
+              </button>
+            ))}
           </div>
 
           {loading ? (
@@ -159,7 +180,9 @@ export default function TodayPage() {
               Loading curriculum roadmap...
             </div>
           ) : (
-            packs.map((pack) => {
+            packs
+              .filter((p) => cefrFilter === "ALL" || p.cefr === cefrFilter)
+              .map((pack) => {
               const isActive = settings?.active_pack_code === pack.code;
               const total = pack.total_items || 0;
               const seen = pack.seen_items || 0;
